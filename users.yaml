@@ -1,8 +1,3 @@
 
-users:
-  user1:
-    name: John Biotech
-    password: demo123
-  user2:
-    name: Jane Regulatory
-    password: demo456
+# placeholder for users.yaml content
+# your previous users.yaml file content

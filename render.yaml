@@ -1,0 +1,7 @@
+
+services:
+  - type: web
+    name: cmc-cqa-agent
+    env: docker
+    plan: free
+    branch: main
