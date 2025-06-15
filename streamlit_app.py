@@ -1,37 +1,31 @@
 
-import streamlit as st
+      import streamlit as st
 import pandas as pd
 import pdfplumber
 import yaml
 import os
 
-# Load users (in real SaaS this would be external DB)
+# Load users
 USERS_FILE = "users.yaml"
 with open(USERS_FILE) as f:
     users = yaml.safe_load(f)["users"]
 
-# Simple login system
 def login(username, password):
     if username in users and users[username]["password"] == password:
         return True, users[username]["name"]
     return False, None
 
-# KnowledgeBase path (single shared KB for Phase 11 MVP)
 KB_PATH = "output/CQA_KnowledgeBase_Master.csv"
-
-# Ensure KB exists
 if not os.path.exists(KB_PATH):
     os.makedirs("output", exist_ok=True)
     pd.DataFrame(columns=["Modality", "Phase", "CQA", "Test Methods", "Justification", "Regulatory Source", "Control Action"]).to_csv(KB_PATH, index=False)
 
-# Load and save KnowledgeBase
 def load_kb():
     return pd.read_csv(KB_PATH).fillna("")
 
 def save_kb(df):
     df.to_csv(KB_PATH, index=False)
 
-# Ingestion engine
 def ingest_pdf(pdf_path, modality, phase):
     text = ""
     with pdfplumber.open(pdf_path) as pdf:
@@ -39,7 +33,6 @@ def ingest_pdf(pdf_path, modality, phase):
             page_text = page.extract_text()
             if page_text:
                 text += page_text + "\n"
-
     chunks = [text[i:i+1000] for i in range(0, len(text), 1000)]
     results = []
     for chunk in chunks:
@@ -80,7 +73,6 @@ def ingest_pdf(pdf_path, modality, phase):
                 results.append(("Polymorphic Forms", "XRPD"))
     return results
 
-# Reasoning engine
 def query_reasoning(modality, phase, kb):
     df_filtered = kb[
         (kb['Modality'].str.lower() == modality.lower()) &
@@ -97,9 +89,8 @@ def query_reasoning(modality, phase, kb):
         output.append(f"**CQA:** {cqa}\n- Test Methods: {tests}\n- Control Action: {control_action}\n- Justification: {justifications}\n")
     return "\n\n".join(output)
 
-# Streamlit UI with authentication
-st.set_page_config(page_title="CMC Unified SaaS (Phase 11)", page_icon="🔐", layout="wide")
-st.title("🔐 CMC Unified SaaS Platform (Phase 11)")
+st.set_page_config(page_title="CMC Unified SaaS (Phase 11.5.5)", page_icon="🔐", layout="wide")
+st.title("🔐 CMC Unified SaaS Platform (Phase 11.5.5 Docker Build)")
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
