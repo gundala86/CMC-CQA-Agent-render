@@ -1,4 +1,4 @@
-pstreamlit==1.25.0
+streamlit==1.25.0
 pandas==1.5.3
 pyyaml==6.0.1
 pdfplumber==0.10.3
