@@ -109,18 +109,31 @@ def dataframe_to_pdf(df, title="Reasoning Results"):
     pdf.set_font("Arial", size=12)
     pdf.cell(200, 10, txt=title, ln=True, align="C")
     pdf.ln(10)
-    col_width = pdf.w / (len(df.columns) + 1)
+
+    # Calculate column widths based on max content length
+    col_widths = []
+    for col in df.columns:
+        max_content = max([len(str(x)) for x in df[col]] + [len(str(col))])
+        # Approximate width: 2.5 per character, min 30, max 60
+        col_widths.append(min(max(30, max_content * 2.5), 60))
+
     # Bold headers
     pdf.set_font("Arial", "B", 12)
-    for col in df.columns:
-        pdf.cell(col_width, 10, str(col), border=1)
+    for i, col in enumerate(df.columns):
+        pdf.cell(col_widths[i], 10, str(col), border=1)
     pdf.ln()
+
     # Regular font for rows
     pdf.set_font("Arial", size=12)
     for _, row in df.iterrows():
-        for item in row:
-            pdf.cell(col_width, 10, str(item), border=1)
+        for i, item in enumerate(row):
+            # Truncate if too long
+            text = str(item)
+            if len(text) > 40:
+                text = text[:37] + "..."
+            pdf.cell(col_widths[i], 10, text, border=1)
         pdf.ln()
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
         pdf.output(tmpfile.name)
         tmpfile.seek(0)
