@@ -110,37 +110,37 @@ def dataframe_to_pdf(df, title="Reasoning Results"):
     pdf.cell(0, 10, txt=title, ln=True, align="C")
     pdf.ln(5)
 
-    # Calculate column widths (adjust as needed)
+    # Calculate column widths
     col_widths = []
     for col in df.columns:
         max_content = max([len(str(x)) for x in df[col]] + [len(str(col))])
         col_widths.append(min(max(30, max_content * 2.2), 55))
 
-    # Bold headers
+    # Table headers (bold, single line)
     pdf.set_font("Arial", "B", 12)
     for i, col in enumerate(df.columns):
-        pdf.multi_cell(col_widths[i], 10, str(col), border=1, align='C', ln=3 if i == len(df.columns)-1 else 0)
+        pdf.cell(col_widths[i], 10, str(col), border=1, align='C')
     pdf.ln()
 
-    # Regular font for rows
+    # Table rows (wrap text)
     pdf.set_font("Arial", size=11)
     for _, row in df.iterrows():
-        y_before = pdf.get_y()
-        x_before = pdf.get_x()
+        y_start = pdf.get_y()
+        x_start = pdf.get_x()
         cell_heights = []
-        # Calculate the height needed for each cell in the row
+        # Calculate required height for each cell
         for i, item in enumerate(row):
             text = str(item)
             n_lines = len(pdf.multi_cell(col_widths[i], 8, text, border=0, align='L', split_only=True))
             cell_heights.append(n_lines * 8)
         max_height = max(cell_heights)
-        pdf.set_y(y_before)
-        pdf.set_x(x_before)
-        # Draw each cell with the calculated height
+        pdf.set_y(y_start)
+        pdf.set_x(x_start)
+        # Draw each cell with wrapping
         for i, item in enumerate(row):
             x = pdf.get_x()
             y = pdf.get_y()
-            pdf.multi_cell(col_widths[i], 8, str(item), border=1, align='L', max_line_height=pdf.font_size)
+            pdf.multi_cell(col_widths[i], 8, str(item), border=1, align='L')
             pdf.set_xy(x + col_widths[i], y)
         pdf.ln(max_height)
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
