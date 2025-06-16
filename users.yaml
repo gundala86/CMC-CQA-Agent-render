@@ -1,7 +1,10 @@
+
 users:
   user1:
     name: John Biotech
     password: demo123
+    role: admin
   user2:
     name: Jane Regulatory
     password: demo456
+    role: user
