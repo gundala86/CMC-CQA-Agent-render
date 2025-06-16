@@ -107,33 +107,42 @@ def dataframe_to_pdf(df, title="Reasoning Results"):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt=title, ln=True, align="C")
-    pdf.ln(10)
+    pdf.cell(0, 10, txt=title, ln=True, align="C")
+    pdf.ln(5)
 
-    # Calculate column widths based on max content length
+    # Calculate column widths (adjust as needed)
     col_widths = []
     for col in df.columns:
         max_content = max([len(str(x)) for x in df[col]] + [len(str(col))])
-        # Approximate width: 2.5 per character, min 30, max 60
-        col_widths.append(min(max(30, max_content * 2.5), 60))
+        col_widths.append(min(max(30, max_content * 2.2), 55))
 
     # Bold headers
     pdf.set_font("Arial", "B", 12)
     for i, col in enumerate(df.columns):
-        pdf.cell(col_widths[i], 10, str(col), border=1)
+        pdf.multi_cell(col_widths[i], 10, str(col), border=1, align='C', ln=3 if i == len(df.columns)-1 else 0)
     pdf.ln()
 
     # Regular font for rows
-    pdf.set_font("Arial", size=12)
+    pdf.set_font("Arial", size=11)
     for _, row in df.iterrows():
+        y_before = pdf.get_y()
+        x_before = pdf.get_x()
+        cell_heights = []
+        # Calculate the height needed for each cell in the row
         for i, item in enumerate(row):
-            # Truncate if too long
             text = str(item)
-            if len(text) > 40:
-                text = text[:37] + "..."
-            pdf.cell(col_widths[i], 10, text, border=1)
-        pdf.ln()
-
+            n_lines = len(pdf.multi_cell(col_widths[i], 8, text, border=0, align='L', split_only=True))
+            cell_heights.append(n_lines * 8)
+        max_height = max(cell_heights)
+        pdf.set_y(y_before)
+        pdf.set_x(x_before)
+        # Draw each cell with the calculated height
+        for i, item in enumerate(row):
+            x = pdf.get_x()
+            y = pdf.get_y()
+            pdf.multi_cell(col_widths[i], 8, str(item), border=1, align='L', max_line_height=pdf.font_size)
+            pdf.set_xy(x + col_widths[i], y)
+        pdf.ln(max_height)
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
         pdf.output(tmpfile.name)
         tmpfile.seek(0)
