@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import pdfplumber
@@ -110,38 +109,45 @@ if not st.session_state.logged_in:
             st.error("Invalid username or password")
 else:
     st.success(f"Welcome, {st.session_state.user}!")
-    menu = st.sidebar.radio("Navigate", ["🔎 Query Reasoning Agent", "📄 Ingest PDF", "📊 View KnowledgeBase", "🚪 Logout"])
+    # Only show admin options to admin users
+    if st.session_state.role == "admin":
+        menu = st.sidebar.radio(
+            "Navigate",
+            ["🔎 Query Reasoning Agent", "📄 Ingest PDF", "📊 View KnowledgeBase", "🚪 Logout"]
+        )
+    else:
+        menu = st.sidebar.radio(
+            "Navigate",
+            ["🔎 Query Reasoning Agent", "🚪 Logout"]
+        )
     kb = load_kb()
 
-    if menu == "📄 Ingest PDF":
-        if st.session_state.role != "admin":
-            st.warning("Only admin users can ingest new PDFs.")
-        else:
-            st.header("📄 Ingest New Regulatory PDF")
-            uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
-            modality = st.text_input("Modality (e.g., mAb, ADC, CAR-T, AAV Gene Therapy, Small Molecule)")
-            phase = st.text_input("Phase (e.g., Phase 1, Phase 2, Phase 3)")
-            if st.button("Ingest"):
-                if uploaded_file and modality and phase:
-                    with open("uploaded.pdf", "wb") as f:
-                        f.write(uploaded_file.read())
-                    new_results = ingest_pdf("uploaded.pdf", modality, phase)
-                    if new_results:
-                        new_records = []
-                        for cqa, test in new_results:
-                            new_records.append({
-                                "Modality": modality, "Phase": phase, "CQA": cqa,
-                                "Test Methods": test, "Justification": "AI Extracted",
-                                "Regulatory Source": "PDF-LLM", "Control Action": "Specification"
-                            })
-                        new_df = pd.DataFrame(new_records)
-                        kb = pd.concat([kb, new_df], ignore_index=True)
-                        save_kb(kb)
-                        st.success(f"Ingestion complete. {len(new_df)} new records added!")
-                    else:
-                        st.warning("No extractable data found in PDF.")
+    if menu == "📄 Ingest PDF" and st.session_state.role == "admin":
+        st.header("📄 Ingest New Regulatory PDF")
+        uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
+        modality = st.text_input("Modality (e.g., mAb, ADC, CAR-T, AAV Gene Therapy, Small Molecule)")
+        phase = st.text_input("Phase (e.g., Phase 1, Phase 2, Phase 3)")
+        if st.button("Ingest"):
+            if uploaded_file and modality and phase:
+                with open("uploaded.pdf", "wb") as f:
+                    f.write(uploaded_file.read())
+                new_results = ingest_pdf("uploaded.pdf", modality, phase)
+                if new_results:
+                    new_records = []
+                    for cqa, test in new_results:
+                        new_records.append({
+                            "Modality": modality, "Phase": phase, "CQA": cqa,
+                            "Test Methods": test, "Justification": "AI Extracted",
+                            "Regulatory Source": "PDF-LLM", "Control Action": "Specification"
+                        })
+                    new_df = pd.DataFrame(new_records)
+                    kb = pd.concat([kb, new_df], ignore_index=True)
+                    save_kb(kb)
+                    st.success(f"Ingestion complete. {len(new_df)} new records added!")
                 else:
-                    st.warning("Please upload a PDF and fill modality and phase.")
+                    st.warning("No extractable data found in PDF.")
+            else:
+                st.warning("Please upload a PDF and fill modality and phase.")
 
     elif menu == "🔎 Query Reasoning Agent":
         st.header("🔎 Reasoning Agent")
