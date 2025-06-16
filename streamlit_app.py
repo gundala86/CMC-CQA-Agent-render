@@ -3,6 +3,8 @@ import pandas as pd
 import pdfplumber
 import yaml
 import os
+from fpdf import FPDF
+import tempfile
 
 # Load users
 USERS_FILE = "users.yaml"
@@ -78,15 +80,52 @@ def query_reasoning(modality, phase, kb):
         (kb['Phase'].str.lower() == phase.lower())
     ]
     if df_filtered.empty:
-        return "No data found for your query."
+        return pd.DataFrame([{
+            "CQA": "No data found",
+            "Test Methods": "",
+            "Control Action": "",
+            "Justification": "",
+            "Reference": ""
+        }])
     grouped = df_filtered.groupby("CQA")
-    output = []
+    rows = []
     for cqa, group in grouped:
         tests = ", ".join(group["Test Methods"].unique())
         control_action = ", ".join(group["Control Action"].unique())
         justifications = ", ".join(group["Justification"].unique())
-        output.append(f"**CQA:** {cqa}\n- Test Methods: {tests}\n- Control Action: {control_action}\n- Justification: {justifications}\n")
-    return "\n\n".join(output)
+        references = ", ".join(group["Regulatory Source"].unique())
+        rows.append({
+            "CQA": cqa,
+            "Test Methods": tests,
+            "Control Action": control_action,
+            "Justification": justifications,
+            "Reference": references
+        })
+    return pd.DataFrame(rows)
+
+def dataframe_to_pdf(df, title="Reasoning Results"):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt=title, ln=True, align="C")
+    pdf.ln(10)
+    col_width = pdf.w / (len(df.columns) + 1)
+    # Bold headers
+    pdf.set_font("Arial", "B", 12)
+    for col in df.columns:
+        pdf.cell(col_width, 10, str(col), border=1)
+    pdf.ln()
+    # Regular font for rows
+    pdf.set_font("Arial", size=12)
+    for _, row in df.iterrows():
+        for item in row:
+            pdf.cell(col_width, 10, str(item), border=1)
+        pdf.ln()
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
+        pdf.output(tmpfile.name)
+        tmpfile.seek(0)
+        pdf_bytes = tmpfile.read()
+    return pdf_bytes
 
 st.set_page_config(page_title="CMC Unified SaaS (Phase 11.6)", page_icon="🔐", layout="wide")
 st.title("🔐 CMC Unified SaaS Platform (Phase 11.6 Docker Build)")
@@ -154,8 +193,15 @@ else:
         modality = st.selectbox("Select Modality", sorted(kb["Modality"].unique()))
         phase = st.selectbox("Select Phase", sorted(kb["Phase"].unique()))
         if st.button("Run Reasoning Query"):
-            response = query_reasoning(modality, phase, kb)
-            st.markdown(response)
+            result_df = query_reasoning(modality, phase, kb)
+            st.dataframe(result_df, use_container_width=True)
+            pdf_bytes = dataframe_to_pdf(result_df)
+            st.download_button(
+                label="Download Results as PDF",
+                data=pdf_bytes,
+                file_name="reasoning_results.pdf",
+                mime="application/pdf"
+            )
 
     elif menu == "📊 View KnowledgeBase":
         st.header("📊 Current KnowledgeBase")
