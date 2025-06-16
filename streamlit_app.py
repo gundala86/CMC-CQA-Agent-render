@@ -4,6 +4,10 @@ import pdfplumber
 import yaml
 import os
 from fpdf import FPDF
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
 import tempfile
 
 # Load users
@@ -149,6 +153,36 @@ def dataframe_to_pdf(df, title="Reasoning Results"):
         pdf_bytes = tmpfile.read()
     return pdf_bytes
 
+def dataframe_to_pdf_reportlab(df, title="Reasoning Results"):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
+        doc = SimpleDocTemplate(tmpfile.name, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+        # Title
+        elements.append(Paragraph(f"<b>{title}</b>", styles['Title']))
+        # Prepare data for table (headers + rows)
+        data = [list(df.columns)]
+        for _, row in df.iterrows():
+            data.append([Paragraph(str(cell), styles['BodyText']) for cell in row])
+        # Create table
+        table = Table(data, repeatRows=1)
+        # Style the table
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.black),
+            ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 12),
+            ('FONTSIZE', (0,1), (-1,-1), 10),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ]))
+        elements.append(table)
+        doc.build(elements)
+        tmpfile.seek(0)
+        pdf_bytes = tmpfile.read()
+    return pdf_bytes
+
 st.set_page_config(page_title="CMC Unified SaaS (Phase 11.6)", page_icon="🔐", layout="wide")
 st.title("🔐 CMC Unified SaaS Platform (Phase 11.6 Docker Build)")
 
@@ -217,7 +251,7 @@ else:
         if st.button("Run Reasoning Query"):
             result_df = query_reasoning(modality, phase, kb)
             st.dataframe(result_df, use_container_width=True)
-            pdf_bytes = dataframe_to_pdf(result_df)
+            pdf_bytes = dataframe_to_pdf_reportlab(result_df)
             st.download_button(
                 label="Download Results as PDF",
                 data=pdf_bytes,
